@@ -1,47 +1,69 @@
+using System.IO;
 using UnityEngine;
 using UnityEditor;
-using UnityEngine.Timeline;
-using UnityEngine.Playables;
+using UnityEngine.Playables;   // для PlayableDirector
+using UnityEngine.Timeline;    // для TimelineAsset, AnimationTrack, TimelineClip
+using UnityEditor.Timeline;    // для MenuItem и работы с таймлайном
 
-public static class TimelineAutoAlign
+public class AssignTimelineByName
 {
-    [MenuItem("Tools/Timeline/Align Phase Clips To Sequence")]
-    public static void AlignPhaseClips()
+    [MenuItem("Tools/Timeline/Batch Assign Clips By Name")]
+    static void BatchAssign()
     {
-        if (Selection.activeGameObject == null)
+        var go = Selection.activeGameObject;
+        if (go == null)
         {
-            Debug.LogError("Select the GameObject with the PlayableDirector.");
+            Debug.LogError("Выберите GameObject с PlayableDirector!");
             return;
         }
-        var director = Selection.activeGameObject.GetComponent<PlayableDirector>();
+
+        var director = go.GetComponent<PlayableDirector>();
         if (director == null)
         {
-            Debug.LogError("No PlayableDirector on selected GameObject.");
+            Debug.LogError("На этом объекте нет PlayableDirector!");
             return;
         }
+
         var timeline = director.playableAsset as TimelineAsset;
         if (timeline == null)
         {
-            Debug.LogError("PlayableAsset is not a TimelineAsset.");
+            Debug.LogError("PlayableDirector не содержит TimelineAsset!");
             return;
         }
 
-        const double clipDuration = 2.0;
-        int index = 0;
-        // Пробегаем все треки, ищем AnimationTrack
+        // Укажите здесь папку с вашими .anim
+        string animFolder = "Assets/Animations";
+        var animFiles = Directory.GetFiles(animFolder, "*.anim", SearchOption.AllDirectories);
+
         foreach (var track in timeline.GetOutputTracks())
         {
-            if (!(track is AnimationTrack)) continue;
+            if (!(track is AnimationTrack)) 
+                continue;
+
             foreach (var clip in track.GetClips())
             {
-                clip.start = index * clipDuration;
-                clip.duration = clipDuration;
-                index++;
+                var animAsset = clip.asset as AnimationPlayableAsset;
+                if (animAsset != null && animAsset.clip == null)
+                {
+                    string clipName = clip.displayName;
+                    foreach (var path in animFiles)
+                    {
+                        if (Path.GetFileNameWithoutExtension(path) == clipName)
+                        {
+                            var anim = AssetDatabase.LoadAssetAtPath<AnimationClip>(path);
+                            if (anim != null)
+                            {
+                                animAsset.clip = anim;
+                                Debug.Log($"Assigned {clipName} → {path}");
+                            }
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        // Сохраняем изменения
-        EditorUtility.SetDirty(timeline);
-        Debug.Log($"Aligned {index} clips: each {clipDuration}s apart.");
+        AssetDatabase.SaveAssets();
+        Debug.Log("Batch assign complete.");
     }
 }
