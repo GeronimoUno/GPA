@@ -5,7 +5,7 @@ using UnityEngine.Playables;   // для PlayableDirector
 using UnityEngine.Timeline;    // для TimelineAsset, AnimationTrack, TimelineClip
 using UnityEditor.Timeline;    // для MenuItem и работы с таймлайном
 
-public class AssignTimelineByName
+public class TimelineAutoAlign
 {
     [MenuItem("Tools/Timeline/Batch Assign Clips By Name")]
     static void BatchAssign()
